@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Purple SPLAT! — Single Review Rubric</title>
+    <style>
+        :root {
+            --font-display: 'Oswald', 'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', 'Franklin Gothic Medium', 'Helvetica Neue', Impact, sans-serif;
+            --font-body: 'Source Sans Pro', 'Source Sans 3', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            --dp-dark: #1a1a2e;
+            --dp-purple: #6b2fa0;
+            --dp-purple-light: #9b59b6;
+            --dp-purple-glow: rgba(107, 47, 160, 0.3);
+            --dp-gold: #d4a843;
+            --dp-gold-dim: rgba(212, 168, 67, 0.2);
+            --dp-red: #c0392b;
+            --dp-text: #e8e8e8;
+            --dp-text-dim: #999;
+            --dp-card: #222240;
+            --dp-card-border: #333355;
+            --dp-input-bg: #2a2a4a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--dp-dark);
+            color: var(--dp-text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .noise-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .container { max-width: 720px; margin: 0 auto; padding: 30px 20px 60px; }
+
+        .header { text-align: center; margin-bottom: 40px; position: relative; }
+        .header::after { content: ''; display: block; width: 120px; height: 3px; background: linear-gradient(90deg, transparent, var(--dp-gold), transparent); margin: 20px auto 0; }
+        .header-label { font-family: var(--font-display); font-size: 0.75em; letter-spacing: 4px; text-transform: uppercase; color: var(--dp-gold); margin-bottom: 8px; }
+        .header h1 { font-family: var(--font-display); font-size: 2.6em; font-weight: 700; letter-spacing: 2px; color: #fff; text-shadow: 0 0 40px var(--dp-purple-glow); line-height: 1.1; }
+        .header h1 span { color: var(--dp-gold); }
+        .header-sub { font-size: 0.95em; color: var(--dp-text-dim); margin-top: 12px; line-height: 1.5; }
+
+        .song-name-section { background: var(--dp-card); border: 1px solid var(--dp-card-border); border-radius: 8px; padding: 20px 24px; margin-bottom: 24px; }
+        .song-name-section label { font-family: var(--font-display); font-size: 0.85em; letter-spacing: 2px; text-transform: uppercase; color: var(--dp-gold); display: block; margin-bottom: 8px; }
+        .song-name-input { width: 100%; background: var(--dp-input-bg); border: 1px solid var(--dp-card-border); border-radius: 4px; color: #fff; font-family: var(--font-body); font-size: 1.1em; padding: 10px 14px; outline: none; transition: border-color 0.2s; }
+        .song-name-input:focus { border-color: var(--dp-purple-light); }
+        .song-name-input::placeholder { color: #555; }
+
+        .category-card { background: var(--dp-card); border: 1px solid var(--dp-card-border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; transition: border-color 0.3s; }
+        .category-card.scored { border-color: var(--dp-purple); }
+        .category-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; }
+        .category-num { font-family: var(--font-display); font-size: 0.8em; font-weight: 600; color: var(--dp-purple-light); width: 28px; flex-shrink: 0; }
+        .category-title { font-family: var(--font-display); font-size: 1.1em; font-weight: 600; letter-spacing: 0.5px; flex-grow: 1; }
+        .category-score-badge { font-family: var(--font-display); font-size: 1.1em; font-weight: 700; color: var(--dp-gold); min-width: 40px; text-align: right; }
+
+        .tier-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 20px 20px; }
+        .tier-btn { background: var(--dp-input-bg); border: 1px solid var(--dp-card-border); border-radius: 6px; padding: 12px 14px; cursor: pointer; transition: all 0.2s; text-align: left; }
+        .tier-btn:hover { border-color: var(--dp-purple-light); background: rgba(107, 47, 160, 0.15); }
+        .tier-btn.selected { border-color: var(--dp-gold); background: var(--dp-gold-dim); }
+        .tier-score { font-family: var(--font-display); font-size: 1.3em; font-weight: 700; color: #fff; display: block; margin-bottom: 4px; }
+        .tier-btn.selected .tier-score { color: var(--dp-gold); }
+        .tier-desc { font-size: 0.82em; color: var(--dp-text-dim); line-height: 1.4; }
+        .tier-btn.selected .tier-desc { color: var(--dp-text); }
+
+        .total-section { background: linear-gradient(135deg, var(--dp-card) 0%, #2a2050 100%); border: 1px solid var(--dp-purple); border-radius: 8px; padding: 28px; margin-top: 32px; text-align: center; position: relative; overflow: hidden; }
+        .total-section::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--dp-gold), transparent); }
+        .total-song-name { font-family: var(--font-display); font-size: 1.3em; font-weight: 600; color: #fff; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--dp-card-border); display: none; }
+        .total-song-name.visible { display: block; }
+        .total-label { font-family: var(--font-display); font-size: 0.8em; letter-spacing: 3px; text-transform: uppercase; color: var(--dp-text-dim); margin-bottom: 8px; }
+        .total-score { font-family: var(--font-display); font-size: 3.5em; font-weight: 700; color: #fff; text-shadow: 0 0 30px var(--dp-purple-glow); line-height: 1; }
+        .total-max { font-size: 0.35em; color: var(--dp-text-dim); font-weight: 400; }
+        .total-verdict { font-family: var(--font-display); font-size: 1.3em; font-weight: 600; letter-spacing: 1px; margin-top: 12px; padding: 6px 20px; border-radius: 4px; display: inline-block; }
+
+        .verdict-masterpiece { color: var(--dp-gold); text-shadow: 0 0 20px var(--dp-gold-dim); }
+        .verdict-excellent { color: #2ecc71; }
+        .verdict-verygood { color: #27ae60; }
+        .verdict-good { color: #f39c12; }
+        .verdict-average { color: #e67e22; }
+        .verdict-belowaverage { color: #e74c3c; }
+        .verdict-poor { color: #c0392b; }
+        .verdict-verypoor { color: #922b21; }
+
+        .rating-guide { margin-top: 24px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+        .rating-chip { font-family: var(--font-display); font-size: 0.75em; letter-spacing: 0.5px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--dp-card-border); color: var(--dp-text-dim); transition: all 0.3s; }
+        .rating-chip.active { border-color: var(--dp-gold); color: var(--dp-gold); background: var(--dp-gold-dim); }
+
+        .summary-card { background: linear-gradient(135deg, #1e1e3a 0%, #2a2050 100%); border: 1px solid var(--dp-purple); border-radius: 8px; padding: 28px; margin-top: 24px; display: none; }
+        .summary-card.visible { display: block; }
+        .summary-header { text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--dp-card-border); }
+        .summary-channel { font-family: var(--font-display); font-size: 0.7em; letter-spacing: 3px; text-transform: uppercase; color: var(--dp-gold); margin-bottom: 4px; }
+        .summary-song-title { font-family: var(--font-display); font-size: 1.6em; font-weight: 700; color: #fff; line-height: 1.2; }
+        .summary-song-title span { font-weight: 400; font-size: 0.65em; color: var(--dp-text-dim); display: block; margin-top: 4px; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin-bottom: 20px; }
+        .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .summary-cat-name { font-size: 0.85em; color: var(--dp-text-dim); }
+        .summary-cat-score { font-family: var(--font-display); font-weight: 600; color: #fff; font-size: 0.95em; }
+        .summary-total-row { text-align: center; padding-top: 16px; border-top: 1px solid var(--dp-card-border); }
+        .summary-total-score { font-family: var(--font-display); font-size: 2.4em; font-weight: 700; color: #fff; }
+        .summary-total-verdict { font-family: var(--font-display); font-size: 1.1em; font-weight: 600; letter-spacing: 1px; margin-top: 4px; }
+        .summary-cta { text-align: center; margin-top: 16px; font-size: 0.8em; color: var(--dp-text-dim); font-style: italic; }
+
+        @media (max-width: 500px) { .summary-grid { grid-template-columns: 1fr; } }
+
+        .actions { display: flex; gap: 12px; margin-top: 24px; justify-content: center; }
+        .btn { font-family: var(--font-display); font-size: 0.85em; letter-spacing: 2px; text-transform: uppercase; padding: 10px 24px; border-radius: 4px; border: 1px solid var(--dp-card-border); background: var(--dp-card); color: var(--dp-text); cursor: pointer; transition: all 0.2s; }
+        .btn:hover { border-color: var(--dp-purple-light); background: var(--dp-input-bg); }
+        .btn-reset { border-color: var(--dp-red); color: var(--dp-red); }
+        .btn-reset:hover { background: rgba(192, 57, 43, 0.15); }
+
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--dp-card-border); color: var(--dp-text-dim); font-size: 0.85em; line-height: 1.6; }
+        .footer a { color: var(--dp-purple-light); text-decoration: none; }
+        .footer a:hover { color: var(--dp-gold); }
+
+        @media (max-width: 500px) { .header h1 { font-size: 2em; } .total-score { font-size: 2.8em; } .container { padding: 20px 14px 40px; } .tier-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+    <div class="container">
+        <div class="header">
+            <div class="header-label">Deep Purple Vibes</div>
+            <h1>SPLAT! <span>SINGLE REVIEW</span></h1>
+            <p class="header-sub">Rate each category by clicking the tier that fits. Your total score out of 100 determines the final verdict.</p>
+        </div>
+
+        <div class="song-name-section">
+            <label for="songName">Song Title</label>
+            <input type="text" id="songName" class="song-name-input" placeholder="Enter the single name...">
+        </div>
+
+        <div id="categories"></div>
+
+        <div class="total-section">
+            <div class="total-song-name" id="totalSongName"></div>
+            <div class="total-label">Total Score</div>
+            <div class="total-score" id="totalScore">0 <span class="total-max">/ 100</span></div>
+            <div class="total-verdict" id="totalVerdict">&mdash;</div>
+            <div class="rating-guide" id="ratingGuide"></div>
+        </div>
+
+        <div class="summary-card" id="summaryCard">
+            <div class="summary-header">
+                <div class="summary-channel">Deep Purple Vibes — SPLAT! Single Review</div>
+                <div class="summary-song-title" id="summarySongTitle">—<span>from SPLAT! (2026)</span></div>
+            </div>
+            <div class="summary-grid" id="summaryGrid"></div>
+            <div class="summary-total-row">
+                <div class="summary-total-score" id="summaryTotalScore">—</div>
+                <div class="summary-total-verdict" id="summaryTotalVerdict">—</div>
+            </div>
+            <div class="summary-cta">Screenshot this and share your scores in the comments</div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-reset" onclick="resetAll()">Reset</button>
+        </div>
+
+        <div class="footer">
+            A <a href="#">Deep Purple Vibes</a> production.<br>
+            Share your scores in the comments — let's see where you land.
+        </div>
+    </div>
+
+    <script>
+        const categories = [
+            {
+                title: "Musicianship",
+                tiers: [
+                    { score: 2.5, desc: "Flat or sloppy — no one's really showing up" },
+                    { score: 5, desc: "Competent but safe — does the job, nothing more" },
+                    { score: 7.5, desc: "Strong playing with real moments of class" },
+                    { score: 10, desc: "A performance we'll still be talking about in ten years" }
+                ]
+            },
+            {
+                title: "Songwriting",
+                tiers: [
+                    { score: 2.5, desc: "Weak structure, no hook, goes nowhere" },
+                    { score: 5, desc: "Decent but forgettable — heard it before" },
+                    { score: 7.5, desc: "Well-crafted with a hook that sticks" },
+                    { score: 10, desc: "Belongs on the same setlist as the classics and holds its own" }
+                ]
+            },
+            {
+                title: "Vocals",
+                tiers: [
+                    { score: 2.5, desc: "Strained or distracting — takes you out of the song" },
+                    { score: 5, desc: "Adequate but nothing distinctive" },
+                    { score: 7.5, desc: "Strong delivery with real character" },
+                    { score: 10, desc: "Gillan finds something unexpected" }
+                ]
+            },
+            {
+                title: "Lyrics",
+                tiers: [
+                    { score: 2.5, desc: "Lazy, clichéd, or nonsensical" },
+                    { score: 5, desc: "Serviceable but nothing stays with you" },
+                    { score: 7.5, desc: "Solid writing with lines worth quoting" },
+                    { score: 10, desc: "Lines that will be quoted" }
+                ]
+            },
+            {
+                title: "Production",
+                tiers: [
+                    { score: 2.5, desc: "Muddy, thin, or over-processed" },
+                    { score: 5, desc: "Adequate but lacking punch or clarity" },
+                    { score: 7.5, desc: "Well-produced — clean and powerful" },
+                    { score: 10, desc: "Exceptional — everything exactly where it should be" }
+                ]
+            },
+            {
+                title: "Innovation / Creativity",
+                tiers: [
+                    { score: 2.5, desc: "Completely derivative — nothing new" },
+                    { score: 5, desc: "Mostly by the book with a creative moment or two" },
+                    { score: 7.5, desc: "Fresh approach — takes some genuine risks" },
+                    { score: 10, desc: "Genuinely surprising — pushes into new territory" }
+                ]
+            },
+            {
+                title: "Deep Purple Signature Sound",
+                tiers: [
+                    { score: 2.5, desc: "Could be any band — no Purple DNA" },
+                    { score: 5, desc: "Recognisably Purple but playing it safe" },
+                    { score: 7.5, desc: "Strong Purple identity with fresh elements" },
+                    { score: 10, desc: "Unmistakably Purple — and it evolves the sound" }
+                ]
+            },
+            {
+                title: "Emotional Impact",
+                tiers: [
+                    { score: 2.5, desc: "Flat — nothing lands" },
+                    { score: 5, desc: "Some moments but doesn't stick with you" },
+                    { score: 7.5, desc: "Emotionally engaging — real moments of power" },
+                    { score: 10, desc: "Stops you wherever you are when it comes on" }
+                ]
+            },
+            {
+                title: "Cohesion",
+                tiers: [
+                    { score: 2.5, desc: "Disjointed — feels like parts stitched together" },
+                    { score: 5, desc: "Holds together but some sections feel loose" },
+                    { score: 7.5, desc: "Flows well — everything serves the song" },
+                    { score: 10, desc: "Tight, purposeful, nothing wasted" }
+                ]
+            },
+            {
+                title: "Replay Value",
+                tiers: [
+                    { score: 2.5, desc: "One and done — no pull to revisit" },
+                    { score: 5, desc: "Might return to it, might not" },
+                    { score: 7.5, desc: "Worth returning to — reveals more each time" },
+                    { score: 10, desc: "Days later, still can't stop reaching for it" }
+                ]
+            }
+        ];
+
+        const verdicts = [
+            { min: 90, max: 100, label: "Masterpiece", css: "verdict-masterpiece" },
+            { min: 80, max: 89.75, label: "Excellent", css: "verdict-excellent" },
+            { min: 70, max: 79.75, label: "Very Good", css: "verdict-verygood" },
+            { min: 60, max: 69.75, label: "Good", css: "verdict-good" },
+            { min: 50, max: 59.75, label: "Average", css: "verdict-average" },
+            { min: 40, max: 49.75, label: "Below Average", css: "verdict-belowaverage" },
+            { min: 30, max: 39.75, label: "Poor", css: "verdict-poor" },
+            { min: 0, max: 29.75, label: "Very Poor", css: "verdict-verypoor" }
+        ];
+
+        const container = document.getElementById('categories');
+        const guideContainer = document.getElementById('ratingGuide');
+        const scores = new Array(categories.length).fill(null);
+
+        verdicts.forEach(v => {
+            const chip = document.createElement('span');
+            chip.className = 'rating-chip';
+            chip.dataset.min = v.min;
+            chip.dataset.max = v.max;
+            chip.dataset.css = v.css;
+            chip.textContent = `${v.min}\u2013${v.max}: ${v.label}`;
+            guideContainer.appendChild(chip);
+        });
+
+        categories.forEach((cat, i) => {
+            const card = document.createElement('div');
+            card.className = 'category-card';
+            card.dataset.index = i;
+            card.innerHTML = `
+                <div class="category-header">
+                    <span class="category-num">${String(i + 1).padStart(2, '0')}</span>
+                    <span class="category-title">${cat.title}</span>
+                    <span class="category-score-badge" id="badge-${i}">\u2014</span>
+                </div>
+                <div class="tier-grid">
+                    ${cat.tiers.map((tier, t) => `
+                        <div class="tier-btn" data-cat="${i}" data-tier="${t}" data-score="${tier.score}" onclick="selectTier(${i}, ${t})">
+                            <span class="tier-score">${tier.score}</span>
+                            <span class="tier-desc">${tier.desc}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        function selectTier(catIndex, tierIndex) {
+            const card = document.querySelector(`.category-card[data-index="${catIndex}"]`);
+            const buttons = card.querySelectorAll('.tier-btn');
+            const selected = buttons[tierIndex];
+            const score = parseFloat(selected.dataset.score);
+
+            buttons.forEach(btn => btn.classList.remove('selected'));
+
+            if (scores[catIndex] === score) {
+                scores[catIndex] = null;
+                card.classList.remove('scored');
+                document.getElementById(`badge-${catIndex}`).textContent = '\u2014';
+            } else {
+                selected.classList.add('selected');
+                scores[catIndex] = score;
+                card.classList.add('scored');
+                document.getElementById(`badge-${catIndex}`).textContent = score;
+            }
+            updateTotal();
+        }
+
+        function updateTotal() {
+            let total = 0;
+            let scored = 0;
+            scores.forEach(s => { if (s !== null) { total += s; scored++; } });
+
+            const totalEl = document.getElementById('totalScore');
+            const verdictEl = document.getElementById('totalVerdict');
+            totalEl.innerHTML = `${total} <span class="total-max">/ 100</span>`;
+
+            document.querySelectorAll('.rating-chip').forEach(c => c.classList.remove('active'));
+            verdictEl.className = 'total-verdict';
+
+            let matchedVerdict = null;
+            if (scored === categories.length) {
+                matchedVerdict = verdicts.find(v => total >= v.min && total <= v.max);
+                if (matchedVerdict) {
+                    verdictEl.textContent = matchedVerdict.label;
+                    verdictEl.classList.add(matchedVerdict.css);
+                    document.querySelectorAll('.rating-chip').forEach(chip => {
+                        if (parseFloat(chip.dataset.min) === matchedVerdict.min) chip.classList.add('active');
+                    });
+                }
+            } else {
+                verdictEl.innerHTML = `${scored} of ${categories.length} scored`;
+            }
+            updateSummary(total, scored, matchedVerdict);
+        }
+
+        function updateSummary(total, scored, matchedVerdict) {
+            const card = document.getElementById('summaryCard');
+            const songName = document.getElementById('songName').value.trim();
+            if (scored < categories.length) { card.classList.remove('visible'); return; }
+            card.classList.add('visible');
+            const titleEl = document.getElementById('summarySongTitle');
+            const displayName = songName || 'Untitled Single';
+            titleEl.innerHTML = `\u201C${displayName}\u201D<span>from SPLAT! (2026)</span>`;
+            const grid = document.getElementById('summaryGrid');
+            grid.innerHTML = categories.map((cat, i) => `
+                <div class="summary-row">
+                    <span class="summary-cat-name">${cat.title}</span>
+                    <span class="summary-cat-score">${scores[i]}</span>
+                </div>
+            `).join('');
+            document.getElementById('summaryTotalScore').textContent = `${total} / 100`;
+            const summaryVerdict = document.getElementById('summaryTotalVerdict');
+            summaryVerdict.className = 'summary-total-verdict';
+            if (matchedVerdict) { summaryVerdict.textContent = matchedVerdict.label; summaryVerdict.classList.add(matchedVerdict.css); }
+        }
+
+        document.getElementById('songName').addEventListener('input', function() {
+            const name = this.value.trim();
+            const totalSongEl = document.getElementById('totalSongName');
+            if (name) { totalSongEl.textContent = `\u201C${name}\u201D`; totalSongEl.classList.add('visible'); }
+            else { totalSongEl.classList.remove('visible'); }
+            updateTotal();
+        });
+
+        function resetAll() {
+            scores.fill(null);
+            categories.forEach((_, i) => {
+                document.getElementById(`badge-${i}`).textContent = '\u2014';
+                const card = document.querySelector(`.category-card[data-index="${i}"]`);
+                card.classList.remove('scored');
+                card.querySelectorAll('.tier-btn').forEach(btn => btn.classList.remove('selected'));
+            });
+            document.getElementById('songName').value = '';
+            document.getElementById('summaryCard').classList.remove('visible');
+            document.getElementById('totalSongName').classList.remove('visible');
+            document.getElementById('totalSongName').textContent = '';
+            updateTotal();
+        }
+
+        updateTotal();
+    </script>
+</body>
+</html>
